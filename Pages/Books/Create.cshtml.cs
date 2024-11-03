@@ -8,9 +8,10 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Filip_Ioana_Lab2.Data;
 using Filip_Ioana_Lab2.Models;
 
+
 namespace Filip_Ioana_Lab2.Pages.Books
 {
-    public class CreateModel : PageModel
+    public class CreateModel : BookCategoriesPageModel
     {
         private readonly Filip_Ioana_Lab2.Data.Filip_Ioana_Lab2Context _context;
 
@@ -21,32 +22,43 @@ namespace Filip_Ioana_Lab2.Pages.Books
 
         public IActionResult OnGet()
         {
+            var authorList = _context.Author.Select(x => new
+            {
+                x.ID,
+                FullName = x.LastName + " " + x.FirstName
+            });
+
             ViewData["PublisherID"] = new SelectList(_context.Set<Publisher>(), "ID",
 "PublisherName");
-            ViewData["AuthorID"] = new SelectList(_context.Set<Author>()
-                .Select(a => new
-                {
-                    a.ID,
-                    FullName = a.FirstName + " " + a.LastName
-                }),
-                "ID",
-                "FullName");
+            ViewData["AuthorID"] = new SelectList(authorList, "ID", "FullName");
+
+            var book = new Book();
+            book.BookCategories = new List<BookCategory>();
+            PopulateAssignedCategoryData(_context, book);
+
             return Page();
         }
 
         [BindProperty]
-        public Book Book { get; set; } = default!;
-
-        public async Task<IActionResult> OnPostAsync()
+        public Book Book { get; set; }
+        public async Task<IActionResult> OnPostAsync(string[] selectedCategories)
         {
-            if (!ModelState.IsValid)
+            var newBook = new Book();
+            if (selectedCategories != null)
             {
-                return Page();
+                newBook.BookCategories = new List<BookCategory>();
+                foreach (var cat in selectedCategories)
+                {
+                    var catToAdd = new BookCategory
+                    {
+                        CategoryID = int.Parse(cat)
+                    };
+                    newBook.BookCategories.Add(catToAdd);
+                }
             }
-
+            Book.BookCategories = newBook.BookCategories;
             _context.Book.Add(Book);
             await _context.SaveChangesAsync();
-
             return RedirectToPage("./Index");
         }
     }
